@@ -1,0 +1,6 @@
+{
+  "name": "Social Forge",
+  "description": "Elite content creation and branding agency helping creators and high-growth brands scale with high-retention video production, high-CTR digital design, and social media strategy.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
