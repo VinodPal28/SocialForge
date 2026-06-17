@@ -43,4 +43,9 @@ export interface Inquiry {
   message: string;
   createdAt: string;
   status: 'new' | 'contacted';
+  browser?: string;
+  os?: string;
+  screenSize?: string;
+  language?: string;
+  timezone?: string;
 }
