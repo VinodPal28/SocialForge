@@ -957,6 +957,72 @@ function doPost(e) {
                           </details>
                         </div>
 
+                        {/* Custom Brand Logo Customizer Settings */}
+                        <div className="border-t border-zinc-850/60 pt-3">
+                          <details className="group" id="brand-logo-customizer-details">
+                            <summary className="flex items-center justify-between text-[10px] text-zinc-500 font-mono uppercase cursor-pointer hover:text-white transition-colors select-none">
+                              <span>Brand Logo Identity (JPEG/PNG)</span>
+                              <span className="text-[8px] transition-transform group-open:rotate-180">▼</span>
+                            </summary>
+                            <div className="flex flex-col gap-3 mt-3 bg-black/30 p-3 rounded-lg border border-zinc-850/40">
+                              <p className="text-[10px] text-zinc-400 leading-normal">
+                                Upload your brand logo image (JPEG or PNG) to immediately replace the flame icon across the entire landing page.
+                              </p>
+                              
+                              <div className="flex flex-col gap-1.5">
+                                <label className="text-[9px] font-mono uppercase text-zinc-500">Logo Image File</label>
+                                <div className="flex items-center gap-3">
+                                  <input 
+                                    type="file" 
+                                    accept="image/jpeg,image/png,image/jpg"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        const reader = new FileReader();
+                                        reader.onload = (event) => {
+                                          const base64 = event.target?.result as string;
+                                          if (base64) {
+                                            localStorage.setItem('social_forge_custom_logo', base64);
+                                            window.dispatchEvent(new Event('social_forge_logo_updated'));
+                                            alert('Logo updated successfully! All flame icons have been replaced by your uploaded image.');
+                                          }
+                                        };
+                                        reader.readAsDataURL(file);
+                                      }
+                                    }}
+                                    id="brand-logo-file-input"
+                                    className="hidden"
+                                  />
+                                  <button
+                                    onClick={() => document.getElementById('brand-logo-file-input')?.click()}
+                                    className="px-3 py-1.5 bg-amber-500 text-black font-semibold text-[10px] uppercase font-mono rounded-lg hover:bg-amber-400 transition cursor-pointer"
+                                  >
+                                    Choose JPEG/PNG File
+                                  </button>
+                                  
+                                  {localStorage.getItem('social_forge_custom_logo') && (
+                                    <button
+                                      onClick={() => {
+                                        localStorage.removeItem('social_forge_custom_logo');
+                                        window.dispatchEvent(new Event('social_forge_logo_updated'));
+                                        alert('Reverted to default vector flame logo icon.');
+                                      }}
+                                      className="px-3 py-1.5 bg-rose-950/40 hover:bg-rose-900 border border-rose-500/30 text-rose-400 font-mono text-[10px] uppercase rounded-lg transition cursor-pointer"
+                                    >
+                                      Reset
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="text-[9px] text-zinc-500 leading-normal border-t border-zinc-850/50 pt-2 flex flex-col gap-1 font-mono">
+                                <p>💡 File structure alternative:</p>
+                                <p>To permanently bundle the image as a project asset, name your logo file <strong className="text-zinc-300">"logo.jpg"</strong> and place/upload it directly into the main directory of the project in the left sidebar explorer. The application is configured to scan and deploy it automatically!</p>
+                              </div>
+                            </div>
+                          </details>
+                        </div>
+
                         {/* Push Controls */}
                         {syncSuccess && (
                           <div className="p-2 bg-emerald-950/40 border border-emerald-500/20 rounded-lg text-emerald-400 text-[10px] font-mono flex items-start gap-1.5">
