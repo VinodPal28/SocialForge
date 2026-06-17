@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 interface LogoProps {
   className?: string;
@@ -6,33 +6,63 @@ interface LogoProps {
   size?: 'sm' | 'md' | 'lg';
 }
 
+// Define the ordered list of default logo fallbacks
+const DEFAULT_LOGO_FALLBACKS = [
+  '/assets/images/Socialforge_logo.jpeg', // New primary default, assuming web-accessible path
+  '/logo.jpg',
+  '/logo.png',
+  '/logo.jpeg',
+];
+
+// Helper function to set favicon
+const updateFavicon = (href: string, type?: string) => {
+  const faviconLinks = document.querySelectorAll("link[rel*='icon']");
+  faviconLinks.forEach(link => {
+    link.setAttribute('href', href);
+    if (type) {
+      link.setAttribute('type', type);
+    } else {
+      // Infer type from extension if not provided
+      if (href.endsWith('.png')) {
+        link.setAttribute('type', 'image/png');
+      } else if (href.endsWith('.svg')) {
+        link.setAttribute('type', 'image/svg+xml');
+      } else if (href.endsWith('.jpeg') || href.endsWith('.jpg')) {
+        link.setAttribute('type', 'image/jpeg');
+      } else {
+        link.removeAttribute('type'); // Let browser decide or default
+      }
+    }
+  });
+};
+
 export default function Logo({ className = '', iconOnly = false, size = 'md' }: LogoProps) {
   const [logoSrc, setLogoSrc] = useState<string | null>(null);
   const [loadError, setLoadError] = useState(false);
+  // useRef to keep track of the current fallback index across renders without triggering re-renders
+  const currentFallbackIndex = useRef<number>(-1); // -1 indicates customLocal or initial load, >=0 indicates an index in DEFAULT_LOGO_FALLBACKS
 
   useEffect(() => {
     const handleUpdate = () => {
       const customLocal = localStorage.getItem('social_forge_custom_logo');
-      const faviconLinks = document.querySelectorAll("link[rel*='icon']");
       if (customLocal) {
         setLogoSrc(customLocal);
         setLoadError(false);
-        faviconLinks.forEach(link => {
-          link.setAttribute('href', customLocal);
-          if (customLocal.startsWith('data:image/png')) {
-            link.setAttribute('type', 'image/png');
-          } else if (customLocal.startsWith('data:image/jpeg') || customLocal.startsWith('data:image/jpg')) {
-            link.setAttribute('type', 'image/jpeg');
-          }
-        });
+        currentFallbackIndex.current = -1; // Reset index to indicate custom logo is being used
+        // Explicitly set type for data URLs, infer for others
+        if (customLocal.startsWith('data:image/png')) {
+          updateFavicon(customLocal, 'image/png');
+        } else if (customLocal.startsWith('data:image/jpeg') || customLocal.startsWith('data:image/jpg')) {
+          updateFavicon(customLocal, 'image/jpeg');
+        } else {
+          updateFavicon(customLocal); // Infer type from URL extension
+        }
       } else {
-        // Default to loading from local path. We also query /logo.jpg, /logo.png, etc.
-        setLogoSrc('/logo.jpg');
+        // If no custom logo, start with the first default fallback
+        setLogoSrc(DEFAULT_LOGO_FALLBACKS[0]);
         setLoadError(false);
-        faviconLinks.forEach(link => {
-          link.setAttribute('href', '/logo.jpg');
-          link.setAttribute('type', 'image/jpeg');
-        });
+        currentFallbackIndex.current = 0; // Set index to the first fallback
+        updateFavicon(DEFAULT_LOGO_FALLBACKS[0]);
       }
     };
 
@@ -42,7 +72,28 @@ export default function Logo({ className = '', iconOnly = false, size = 'md' }: 
     return () => {
       window.removeEventListener('social_forge_logo_updated', handleUpdate);
     };
-  }, []);
+  }, []); // Empty dependency array means this effect runs once on mount
+
+  const handleImageError = () => {
+    // If the current logoSrc was a custom one (not from our fallback list)
+    if (currentFallbackIndex.current === -1) {
+      // Start trying from the first default fallback
+      currentFallbackIndex.current = 0;
+      setLogoSrc(DEFAULT_LOGO_FALLBACKS[currentFallbackIndex.current]);
+      updateFavicon(DEFAULT_LOGO_FALLBACKS[currentFallbackIndex.current]);
+      setLoadError(false); // Reset error state to attempt loading the new src
+    } else if (currentFallbackIndex.current < DEFAULT_LOGO_FALLBACKS.length - 1) {
+      // If there are more fallbacks to try
+      currentFallbackIndex.current += 1;
+      setLogoSrc(DEFAULT_LOGO_FALLBACKS[currentFallbackIndex.current]);
+      updateFavicon(DEFAULT_LOGO_FALLBACKS[currentFallbackIndex.current]);
+      setLoadError(false); // Reset error state to attempt loading the new src
+    } else {
+      // All image fallbacks have been exhausted, display the SVG
+      setLoadError(true);
+      updateFavicon('/favicon.svg', 'image/svg+xml');
+    }
+  };
 
   const iconSize = {
     sm: 'w-6 h-6',
@@ -61,30 +112,8 @@ export default function Logo({ className = '', iconOnly = false, size = 'md' }: 
       {/* Dynamic Logo Loader: tries custom image, falls back to vector SVG */}
       {logoSrc && !loadError ? (
         <img 
-          src={logoSrc} 
-          onError={() => {
-            const faviconLinks = document.querySelectorAll("link[rel*='icon']");
-            // Fallback to local logo.png if /logo.jpg failed, else fall back to SVG
-            if (logoSrc === '/logo.jpg') {
-              setLogoSrc('/logo.png');
-              faviconLinks.forEach(link => {
-                link.setAttribute('href', '/logo.png');
-                link.setAttribute('type', 'image/png');
-              });
-            } else if (logoSrc === '/logo.png') {
-              setLogoSrc('/logo.jpeg');
-              faviconLinks.forEach(link => {
-                link.setAttribute('href', '/logo.jpeg');
-                link.setAttribute('type', 'image/jpeg');
-              });
-            } else {
-              setLoadError(true);
-              faviconLinks.forEach(link => {
-                link.setAttribute('href', '/favicon.svg');
-                link.setAttribute('type', 'image/svg+xml');
-              });
-            }
-          }} 
+          src={logoSrc}
+          onError={handleImageError}
           className={`${iconSize} object-contain rounded-lg drop-shadow-[0_0_8px_rgba(249,115,22,0.25)] transition-transform hover:scale-105 duration-300`} 
           alt="Social Forge"
           id="brand-logo-img"
